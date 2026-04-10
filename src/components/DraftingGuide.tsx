@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, XCircle, Info, BookOpen, Target, HelpCircle, Lightbulb, MessageSquare, Sparkles, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Info, BookOpen, Target, HelpCircle, Lightbulb, MessageSquare, Sparkles, ArrowLeft, Printer, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { exportToPDF } from '../services/exportService';
 
 const COMMON_ERRORS = [
   {
@@ -87,31 +88,59 @@ export const DraftingGuide: React.FC = () => {
     }
 
     // 2. Verb Tense Consistency (Behavioral objectives must be in present tense)
-    const pastTenseVerbs = ['ذكر', 'شرح', 'حلل', 'قارن', 'صمم', 'رسم'];
+    const pastTenseVerbs = [
+      { past: 'ذكر', present: 'يذكر' },
+      { past: 'شرح', present: 'يشرح' },
+      { past: 'حلل', present: 'يحلل' },
+      { past: 'قارن', present: 'يقارن' },
+      { past: 'صمم', present: 'يصمم' },
+      { past: 'رسم', present: 'يرسم' },
+      { past: 'حدد', present: 'يحدد' },
+      { past: 'عرف', present: 'يعرف' }
+    ];
     for (const verb of pastTenseVerbs) {
-      if (text.includes(`أن ${verb}`)) {
+      if (text.includes(`أن ${verb.past}`)) {
         results.push({ 
           type: 'error', 
-          message: 'استخدام صيغة الماضي في الهدف السلوكي.', 
-          suggestion: `استخدم الفعل المضارع (مثلاً: "أن يـ${verb}" بدلاً من "أن ${verb}").` 
+          message: `استخدام صيغة الماضي "${verb.past}" في الهدف السلوكي.`, 
+          suggestion: `استخدم الفعل المضارع "أن ${verb.present}" لضمان قابلية القياس في المستقبل.` 
         });
       }
     }
 
     // 3. Passive Voice & Fillers (Encourage Active Voice)
-    if (text.includes('تم إجراء') || text.includes('تمت دراسة')) {
-      results.push({ 
-        type: 'warning', 
-        message: 'استخدام "تم" الزائدة للمجهول يضعف الصياغة.', 
-        suggestion: 'استخدم الفعل المباشر (مثلاً: "أُجري" أو "درس الطالب").' 
-      });
+    const passiveIndicators = [
+      { pattern: 'تم إجراء', suggestion: 'أُجري' },
+      { pattern: 'تمت دراسة', suggestion: 'دُرس' },
+      { pattern: 'تم تنفيذ', suggestion: 'نُفذ' },
+      { pattern: 'تم توضيح', suggestion: 'وُضح' },
+      { pattern: 'تم استخدام', suggestion: 'استُخدم' }
+    ];
+    for (const item of passiveIndicators) {
+      if (text.includes(item.pattern)) {
+        results.push({ 
+          type: 'warning', 
+          message: `استخدام "تم" الزائدة للمجهول (${item.pattern}).`, 
+          suggestion: `استخدم الفعل المباشر (مثلاً: "${item.suggestion}") أو صياغة المعلوم.` 
+        });
+      }
     }
-    if (text.includes('قام بـ') || text.includes('قام ب')) {
-      results.push({ 
-        type: 'warning', 
-        message: 'حشو لغوي (قام بـ).', 
-        suggestion: 'احذف "قام بـ" واستخدم الفعل مباشرة (مثلاً: "أن يحلل" بدلاً من "أن يقوم بتحليل").' 
-      });
+
+    const fillers = [
+      { pattern: 'قام بـ', suggestion: 'استخدم الفعل مباشرة' },
+      { pattern: 'قام بعمل', suggestion: 'استخدم الفعل مباشرة' },
+      { pattern: 'من خلال القيام بـ', suggestion: 'احذف الحشو' },
+      { pattern: 'بشكل كبير', suggestion: 'حدد المعيار بدقة' },
+      { pattern: 'بصورة واضحة', suggestion: 'استخدم معياراً قابلاً للقياس' }
+    ];
+    for (const item of fillers) {
+      if (text.includes(item.pattern)) {
+        results.push({ 
+          type: 'warning', 
+          message: `حشو لغوي أو عبارة فضفاضة (${item.pattern}).`, 
+          suggestion: item.suggestion 
+        });
+      }
     }
 
     // 4. Subject-Verb Agreement
@@ -123,20 +152,30 @@ export const DraftingGuide: React.FC = () => {
       });
     }
 
-    // 5. Pedagogical Clarity (Measurability)
-    if (text.includes('يعرف') && !text.includes('يعرّف')) {
-      results.push({ 
-        type: 'warning', 
-        message: 'فعل "يعرف" (Know) غير قابل للقياس المباشر.', 
-        suggestion: 'استخدم "يعرّف" (Define)، "يذكر"، أو "يعدد".' 
-      });
-    }
-    if (text.includes('يفهم') || text.includes('يدرك')) {
-      results.push({ 
-        type: 'warning', 
-        message: 'أفعال "يفهم" و "يدرك" غامضة تربوياً.', 
-        suggestion: 'استخدم أفعالاً تدل على نواتج الفهم مثل "يشرح"، "يلخص"، أو "يستنتج".' 
-      });
+    // 5. Pedagogical Clarity (Measurability & Quantifiability)
+    const ambiguousVerbs = [
+      { verb: 'يعرف', suggestion: 'يعرّف، يذكر، يعدد، أو يسمي' },
+      { verb: 'يفهم', suggestion: 'يشرح، يلخص، يفسر، أو يعيد صياغة' },
+      { verb: 'يدرك', suggestion: 'يستنتج، يربط، أو يوضح' },
+      { verb: 'يستوعب', suggestion: 'يلخص، يشرح، أو يطبق' },
+      { verb: 'يتذوق', suggestion: 'ينقد، يحلل، أو يوازن' },
+      { verb: 'يستمتع', suggestion: 'يشارك، يختار، أو يصف شعوره تجاه' },
+      { verb: 'يلم بـ', suggestion: 'يعدد، يصف، أو يحدد' },
+      { verb: 'يعي', suggestion: 'يوضح، يفسر، أو يستنبط' },
+      { verb: 'يكتسب', suggestion: 'يطبق، ينفذ، أو يظهر مهارة في' },
+      { verb: 'يتعلم', suggestion: 'يذكر، يطبق، أو يحل' }
+    ];
+
+    for (const item of ambiguousVerbs) {
+      // Check for the verb specifically (avoiding false positives with verbs like "يعرّف")
+      const regex = new RegExp(`(^|\\s)${item.verb}(\\s|$)`, 'i');
+      if (regex.test(text)) {
+        results.push({ 
+          type: 'warning', 
+          message: `فعل "${item.verb}" غير قابل للقياس المباشر أو غامض تربوياً.`, 
+          suggestion: `استخدم أفعالاً إجرائية محددة مثل: ${item.suggestion}.` 
+        });
+      }
     }
 
     // 6. Structure & Redundancy
@@ -175,13 +214,20 @@ export const DraftingGuide: React.FC = () => {
   }, [sampleObjective]);
 
   return (
-    <div className="space-y-8 pb-12">
+    <div id="guide-section" className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">دليل صياغة أسئلة الاختبارات</h2>
           <p className="text-slate-500 mt-1">إرشادات تربوية ولغوية لتحسين جودة بناء الاختبارات التحصيلية.</p>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={() => exportToPDF('دليل_الصياغة', 'guide-section')}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md"
+          >
+            <Printer size={18} />
+            طباعة PDF
+          </button>
           <div className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2">
             <BookOpen size={14} />
             معايير جامعة العريش

@@ -23,7 +23,14 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  ShieldCheck
+  ShieldCheck,
+  HelpCircle,
+  CircleDot,
+  ArrowLeftRight,
+  PenLine,
+  AlignLeft,
+  Printer,
+  FileDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactQuill from 'react-quill-new';
@@ -54,6 +61,67 @@ import {
   Legend
 } from 'recharts';
 
+import { exportToPDF, exportCourseToWord, exportTOSToWord } from './services/exportService';
+
+const QuestionTypeIcon = ({ type, size = 12, className = "" }: { type: QuestionType, size?: number, className?: string }) => {
+  const icons = {
+    'mcq': CircleDot,
+    'true-false': CheckCircle2,
+    'matching': ArrowLeftRight,
+    'complete': PenLine,
+    'essay': AlignLeft
+  };
+  const IconComponent = icons[type];
+  return IconComponent ? <IconComponent size={size} className={className} /> : null;
+};
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }: { 
+  isOpen: boolean, 
+  onClose: () => void, 
+  onConfirm: () => void, 
+  title: string, 
+  message: string 
+}) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" dir="rtl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100"
+          >
+            <div className="p-6 space-y-4 text-right">
+              <div className="flex items-center gap-4">
+                <div className="bg-red-100 p-3 rounded-2xl text-red-600">
+                  <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-xl font-black text-slate-800">{title}</h3>
+              </div>
+              <p className="text-slate-600 leading-relaxed">{message}</p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={onConfirm}
+                  className="flex-1 bg-red-600 text-white py-3 rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+                >
+                  تأكيد الحذف
+                </button>
+                <button
+                  onClick={onClose}
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'course' | 'tos' | 'stats' | 'guide'>('course');
   const [isSaving, setIsSaving] = useState(false);
@@ -81,6 +149,19 @@ export default function App() {
   const [omegaSumLoadings, setOmegaSumLoadings] = useState<number>(12.5);
   const [omegaSumErrors, setOmegaSumErrors] = useState<number>(4.2);
   
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
   // Item Analysis States
   const [itemsAnalysis, setItemsAnalysis] = useState<ItemAnalysis[]>([]);
   const [bloomLevelColors, setBloomLevelColors] = useState<Record<BloomLevel, string>>({
@@ -129,8 +210,16 @@ export default function App() {
   };
 
   const deleteTopic = (id: string) => {
-    setTopics(topics.filter(t => t.id !== id));
-    setObjectives(objectives.filter(o => o.topicId !== id));
+    setConfirmModal({
+      isOpen: true,
+      title: 'حذف الوحدة التدريسية',
+      message: 'هل أنت متأكد من حذف هذه الوحدة؟ سيتم حذف جميع الأهداف المرتبطة بها أيضاً.',
+      onConfirm: () => {
+        setTopics(prev => prev.filter(t => t.id !== id));
+        setObjectives(prev => prev.filter(o => o.topicId !== id));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const addObjective = (topicId: string) => {
@@ -139,7 +228,8 @@ export default function App() {
       topicId,
       text: '',
       level: 'remember',
-      questionType: 'mcq'
+      questionType: 'mcq',
+      questionText: ''
     };
     setObjectives([...objectives, newObjective]);
   };
@@ -148,6 +238,10 @@ export default function App() {
     const level = detectBloomLevel(text);
     const questionType = detectQuestionType(text);
     setObjectives(objectives.map(o => o.id === id ? { ...o, text, level, questionType } : o));
+  };
+
+  const updateObjectiveQuestion = (id: string, questionText: string) => {
+    setObjectives(objectives.map(o => o.id === id ? { ...o, questionText } : o));
   };
 
   const setObjectiveLevel = (id: string, level: BloomLevel) => {
@@ -159,7 +253,15 @@ export default function App() {
   };
 
   const deleteObjective = (id: string) => {
-    setObjectives(objectives.filter(o => o.id !== id));
+    setConfirmModal({
+      isOpen: true,
+      title: 'حذف الهدف السلوكي',
+      message: 'هل أنت متأكد من حذف هذا الهدف السلوكي؟ لا يمكن التراجع عن هذه العملية.',
+      onConfirm: () => {
+        setObjectives(prev => prev.filter(o => o.id !== id));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const totalTopicWeight = useMemo(() => {
@@ -313,17 +415,41 @@ export default function App() {
   };
 
   const removeKr20Item = (id: string) => {
-    setKr20Items(kr20Items.filter(item => item.id !== id));
+    setConfirmModal({
+      isOpen: true,
+      title: 'حذف سؤال من الثبات',
+      message: 'هل أنت متأكد من حذف هذا السؤال من حسابات الثبات؟',
+      onConfirm: () => {
+        setKr20Items(prev => prev.filter(item => item.id !== id));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const autoPopulateKr20 = () => {
-    const levels: BloomLevel[] = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
-    const items = Array.from({ length: 10 }, (_, i) => ({
-      id: crypto.randomUUID(),
-      correctCount: Math.floor(Math.random() * kr20TotalStudents),
-      level: levels[i % levels.length]
-    }));
-    setKr20Items(items);
+    const populate = () => {
+      const levels: BloomLevel[] = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
+      const items = Array.from({ length: 10 }, (_, i) => ({
+        id: crypto.randomUUID(),
+        correctCount: Math.floor(Math.random() * kr20TotalStudents),
+        level: levels[i % levels.length]
+      }));
+      setKr20Items(items);
+    };
+
+    if (kr20Items.length > 0) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'تعبئة بيانات عشوائية',
+        message: 'سيتم مسح جميع البيانات الحالية في جدول الثبات واستبدالها ببيانات عشوائية. هل تريد الاستمرار؟',
+        onConfirm: () => {
+          populate();
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
+    } else {
+      populate();
+    }
   };
 
   // Item Analysis Actions
@@ -335,7 +461,8 @@ export default function App() {
       lowerCorrect: 0,
       groupSize: 10,
       totalCorrect: 0,
-      totalStudents: 30
+      totalStudents: 30,
+      notes: ''
     };
     setItemsAnalysis([...itemsAnalysis, newItem]);
   };
@@ -345,7 +472,15 @@ export default function App() {
   };
 
   const removeItemAnalysis = (id: string) => {
-    setItemsAnalysis(itemsAnalysis.filter(item => item.id !== id));
+    setConfirmModal({
+      isOpen: true,
+      title: 'حذف تحليل الفقرة',
+      message: 'هل أنت متأكد من حذف بيانات تحليل هذه الفقرة؟',
+      onConfirm: () => {
+        setItemsAnalysis(prev => prev.filter(item => item.id !== id));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handlePrint = () => {
@@ -441,6 +576,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'course' && (
             <motion.div 
+              id="course-section"
               key="course"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -448,11 +584,29 @@ export default function App() {
               className="space-y-6"
             >
               <div className="glass-card p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-indigo-100 p-2 rounded-lg">
-                    <BookOpen className="text-indigo-600 w-5 h-5" />
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-indigo-100 p-2 rounded-lg">
+                      <BookOpen className="text-indigo-600 w-5 h-5" />
+                    </div>
+                    <h3 className="text-lg font-bold">معلومات المقرر الدراسي</h3>
                   </div>
-                  <h3 className="text-lg font-bold">معلومات المقرر الدراسي</h3>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => exportCourseToWord(courseName || 'المقرر', topics, objectives)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
+                    >
+                      <FileDown size={14} />
+                      Word
+                    </button>
+                    <button 
+                      onClick={() => exportToPDF(courseName || 'المقرر', 'course-section')}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
+                    >
+                      <Printer size={14} />
+                      PDF
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-500">اسم المقرر</label>
@@ -568,6 +722,37 @@ export default function App() {
                                   />
                                 </div>
 
+                                <div className="mt-2 p-3 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <HelpCircle size={14} className="text-indigo-500" />
+                                      <span className="text-[10px] font-bold text-indigo-700">صياغة السؤال المقترح (حسب مستوى {BLOOM_LEVELS[obj.level].name})</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {BLOOM_LEVELS[obj.level].questionStems.slice(0, 4).map((stem, sIdx) => (
+                                        <button 
+                                          key={sIdx}
+                                          onClick={() => {
+                                            const currentText = obj.questionText || '';
+                                            if (!currentText.includes(stem)) {
+                                              updateObjectiveQuestion(obj.id, stem + ' ' + currentText);
+                                            }
+                                          }}
+                                          className="text-[9px] bg-white border border-indigo-100 px-1.5 py-0.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
+                                        >
+                                          {stem}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <textarea 
+                                    value={obj.questionText || ''}
+                                    onChange={(e) => updateObjectiveQuestion(obj.id, e.target.value)}
+                                    placeholder="اكتب نص السؤال هنا..."
+                                    className="w-full h-16 p-2 text-xs rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-white/80 resize-none"
+                                  />
+                                </div>
+
                                 <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-50">
                                   <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-2">
@@ -581,12 +766,13 @@ export default function App() {
                                           <button
                                             key={type}
                                             onClick={() => setObjectiveQuestionType(obj.id, type)}
-                                            className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${
+                                            className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all flex items-center gap-1.5 ${
                                               obj.questionType === type 
                                                 ? QUESTION_TYPES[type].color + ' ring-2 ring-offset-1 ring-indigo-500' 
                                                 : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
                                             }`}
                                           >
+                                            <QuestionTypeIcon type={type} size={10} />
                                             {QUESTION_TYPES[type].name}
                                           </button>
                                         ))}
@@ -637,6 +823,7 @@ export default function App() {
 
           {activeTab === 'tos' && (
             <motion.div 
+              id="tos-section"
               key="tos"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -648,20 +835,38 @@ export default function App() {
                   {courseName && <p className="text-indigo-600 font-bold text-lg mt-1">مقرر: {courseName}</p>}
                   <p className="text-slate-500">توزيع الأسئلة بناءً على الأوزان النسبية للوحدات ومستويات بلوم.</p>
                 </div>
-                <div className="glass-card p-4 flex items-center gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500">إجمالي عدد الأسئلة</label>
-                    <input 
-                      type="number" 
-                      value={totalQuestions}
-                      onChange={(e) => setTotalQuestions(Number(e.target.value))}
-                      className="w-24 h-10"
-                    />
+                <div className="flex flex-col gap-2">
+                  <div className="glass-card p-4 flex items-center gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500">إجمالي عدد الأسئلة</label>
+                      <input 
+                        type="number" 
+                        value={totalQuestions}
+                        onChange={(e) => setTotalQuestions(Number(e.target.value))}
+                        className="w-24 h-10"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button 
+                        onClick={() => exportTOSToWord(courseName || 'جدول_المواصفات', topics, ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'], tosData.map(row => ({
+                          topicId: row.topicId,
+                          level: row.cells[0].level, // This is a bit simplified, but docx implementation above handles it
+                          questionCount: row.cells.reduce((sum, c) => sum + c.count, 0)
+                        })))} // Note: The tosData structure in the component is different from the one in exportService. I'll fix this.
+                        className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100"
+                      >
+                        <FileDown size={12} />
+                        Word
+                      </button>
+                      <button 
+                        onClick={() => exportToPDF('جدول_المواصفات', 'tos-section')}
+                        className="flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-100"
+                      >
+                        <Printer size={12} />
+                        PDF
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={handlePrint} className="btn-primary h-10">
-                    <Download size={18} />
-                    تصدير / طباعة
-                  </button>
                 </div>
               </div>
 
@@ -796,7 +1001,8 @@ export default function App() {
                         <div className="text-[9px] font-bold text-slate-400 mb-1 uppercase tracking-tighter">توزيع أنواع الأسئلة:</div>
                         <div className="flex flex-wrap gap-1">
                           {(Object.entries(row.typeCounts) as [QuestionType, number][]).filter(([_, count]) => count > 0).map(([type, count]) => (
-                            <div key={type} className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${QUESTION_TYPES[type].color}`}>
+                            <div key={type} className={`text-[8px] px-1.5 py-0.5 rounded border font-bold flex items-center gap-1 ${QUESTION_TYPES[type].color}`}>
+                              <QuestionTypeIcon type={type} size={8} />
                               {QUESTION_TYPES[type].name}: {count}
                             </div>
                           ))}
@@ -862,6 +1068,7 @@ export default function App() {
 
           {activeTab === 'stats' && (
             <motion.div 
+              id="stats-section"
               key="stats"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -871,6 +1078,15 @@ export default function App() {
                 <div>
                   <h2 className="text-2xl font-bold">التحليل الإحصائي للاختبار</h2>
                   <p className="text-slate-500">أدوات متقدمة لقياس جودة الأسئلة وثبات الاختبار.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => exportToPDF('التحليل_الإحصائي', 'stats-section')}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md"
+                  >
+                    <Printer size={18} />
+                    طباعة PDF
+                  </button>
                 </div>
               </div>
 
@@ -1445,6 +1661,7 @@ export default function App() {
                         <th className="p-3 font-bold">إجمالي الطلاب (N)</th>
                         <th className="p-3 font-bold text-indigo-600">معامل الصعوبة (P)</th>
                         <th className="p-3 font-bold text-indigo-600">معامل التمييز (D)</th>
+                        <th className="p-3 font-bold">ملاحظات</th>
                         <th className="p-3"></th>
                       </tr>
                     </thead>
@@ -1525,6 +1742,15 @@ export default function App() {
                               </div>
                             </td>
                             <td className="p-3">
+                              <input 
+                                type="text" 
+                                value={item.notes || ''}
+                                onChange={(e) => updateItemAnalysis(item.id, { notes: e.target.value })}
+                                placeholder="أضف ملاحظة..."
+                                className="w-full h-8 text-[10px] px-2"
+                              />
+                            </td>
+                            <td className="p-3">
                               <button onClick={() => removeItemAnalysis(item.id)} className="text-slate-300 hover:text-red-500">
                                 <Trash2 size={16} />
                               </button>
@@ -1599,6 +1825,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

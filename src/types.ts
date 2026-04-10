@@ -7,14 +7,15 @@ export interface QuestionTypeInfo {
   id: QuestionType;
   name: string;
   color: string;
+  icon: string;
 }
 
 export const QUESTION_TYPES: Record<QuestionType, QuestionTypeInfo> = {
-  'mcq': { id: 'mcq', name: 'اختيار من متعدد', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  'true-false': { id: 'true-false', name: 'صح وخطأ', color: 'bg-green-50 text-green-700 border-green-200' },
-  'matching': { id: 'matching', name: 'مزاوجة', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-  'complete': { id: 'complete', name: 'أكمل', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'essay': { id: 'essay', name: 'سؤال مقالي', color: 'bg-slate-50 text-slate-700 border-slate-200' }
+  'mcq': { id: 'mcq', name: 'اختيار من متعدد', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: 'CircleDot' },
+  'true-false': { id: 'true-false', name: 'صح وخطأ', color: 'bg-green-50 text-green-700 border-green-200', icon: 'CheckCircle2' },
+  'matching': { id: 'matching', name: 'مزاوجة', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: 'ArrowLeftRight' },
+  'complete': { id: 'complete', name: 'أكمل', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'PenLine' },
+  'essay': { id: 'essay', name: 'سؤال مقالي', color: 'bg-slate-50 text-slate-700 border-slate-200', icon: 'AlignLeft' }
 };
 
 export interface BloomLevelInfo {
@@ -23,6 +24,7 @@ export interface BloomLevelInfo {
   description: string;
   color: string;
   verbs: string[];
+  questionStems: string[];
 }
 
 export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
@@ -35,6 +37,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يذكر', 'يعدد', 'يسمي', 'يحدد', 'يعرف', 'يسترجع', 'يختار', 'يكتب', 'قائمة', 'يتعرف',
       'يتلو', 'يستظهر', 'يصف', 'يطابق', 'ينسخ', 'يكرر', 'يعين', 'يدرج', 'يضع قائمة', 'يستخرج',
       'يعيد ذكر', 'يسرد', 'ينسب', 'يؤشر', 'يختار'
+    ],
+    questionStems: [
+      'اذكر...', 'عدد...', 'سمِّ...', 'حدد...', 'عرف...', 'متى حدث...', 'أين يقع...', 'من هو...'
     ]
   },
   understand: {
@@ -46,6 +51,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يفسر', 'يشرح', 'يميز', 'يفرق', 'يلخص', 'يعيد صياغة', 'يوضح', 'يعلل', 'يستنتج', 'يترجم',
       'يحول', 'يعطي أمثلة', 'يتنبأ', 'يربط', 'يعبر', 'يناقش', 'يصف بأسلوبه', 'يكتشف', 'يستخلص',
       'يستبصر', 'يستقرئ', 'يصيغ بأسلوبه', 'يراجع', 'يستعرض'
+    ],
+    questionStems: [
+      'فسر...', 'اشرح بأسلوبك...', 'ما الفرق بين...', 'لخص...', 'لماذا يعتبر...', 'وضح العلاقة بين...'
     ]
   },
   apply: {
@@ -57,6 +65,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يطبق', 'يستخدم', 'يحل', 'يحسب', 'يعرض', 'يوظف', 'يجرب', 'ينفذ', 'يرسم', 'يشغل',
       'يجهز', 'يجدول', 'يغير', 'يخطط', 'يبرهن', 'يستعمل', 'يقيس', 'يعدل', 'يمارس',
       'يشيد', 'ينتج', 'يكتشف', 'يستعمل'
+    ],
+    questionStems: [
+      'طبق...', 'حل المسألة التالية...', 'احسب...', 'كيف يمكنك استخدام...', 'استخدم القاعدة لـ...'
     ]
   },
   analyze: {
@@ -68,6 +79,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يحلل', 'يجزئ', 'يقارن', 'يصنف', 'يفحص', 'يختبر', 'ينقد', 'يفرق بين', 'يخطط', 'يستنبط',
       'يبحث', 'يدقق', 'يكتشف العلاقات', 'يحلل العناصر', 'يستخلص النتائج', 'يميز بين',
       'يعزل', 'يفصل', 'يستقصي', 'يستدل'
+    ],
+    questionStems: [
+      'حلل العناصر الأساسية لـ...', 'قارن بين... و...', 'صنف ما يلي...', 'ما هي الأجزاء المكونة لـ...'
     ]
   },
   evaluate: {
@@ -79,6 +93,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يقوم', 'ينتقد', 'يحكم', 'يقيم', 'يفاضل', 'يبرر', 'يدعم', 'يقدر', 'يدافع', 'يختار الأفضل',
       'يوصي', 'يثبت', 'يدحض', 'يفسر النتائج', 'يعطي رأياً', 'يقرر', 'يستخلص حكماً',
       'يفند', 'يعارض', 'يؤيد', 'يوازن'
+    ],
+    questionStems: [
+      'ما رأيك في...', 'انقد...', 'برر موقفك من...', 'أيهما أفضل ولماذا...', 'احكم على صحة...'
     ]
   },
   create: {
@@ -90,6 +107,9 @@ export const BLOOM_LEVELS: Record<BloomLevel, BloomLevelInfo> = {
       'يبتكر', 'يصمم', 'يؤلف', 'يركب', 'ينتج', 'يقترح', 'يبني', 'يطور', 'ينظم', 'يعدل',
       'يخطط', 'يجمع', 'يشكل', 'يعيد ترتيب', 'يخترع', 'يكتب قصة', 'يضع خطة', 'يصيغ',
       'يشتق', 'يولد', 'يعد', 'يؤطر'
+    ],
+    questionStems: [
+      'صمم نموذجاً لـ...', 'اقترح حلاً لـ...', 'ابتكر طريقة جديدة لـ...', 'ألف قصة حول...', 'خطط لـ...'
     ]
   }
 };
@@ -185,6 +205,7 @@ export interface Objective {
   text: string;
   level: BloomLevel;
   questionType: QuestionType;
+  questionText?: string;
 }
 
 export interface TOSCell {
@@ -201,4 +222,5 @@ export interface ItemAnalysis {
   groupSize: number;    // Size of one group (upper or lower)
   totalCorrect: number; // Total correct in whole sample
   totalStudents: number; // Total students in whole sample
+  notes?: string; // Custom notes for the question
 }
