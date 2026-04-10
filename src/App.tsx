@@ -31,9 +31,12 @@ import 'react-quill-new/dist/quill.snow.css';
 import { 
   BLOOM_LEVELS, 
   detectBloomLevel, 
+  detectQuestionType,
+  QUESTION_TYPES,
   type Topic, 
   type Objective, 
   type BloomLevel,
+  type QuestionType,
   type ItemAnalysis
 } from './types';
 import { DraftingGuide } from './components/DraftingGuide';
@@ -135,18 +138,24 @@ export default function App() {
       id: crypto.randomUUID(),
       topicId,
       text: '',
-      level: 'remember'
+      level: 'remember',
+      questionType: 'mcq'
     };
     setObjectives([...objectives, newObjective]);
   };
 
   const updateObjective = (id: string, text: string) => {
     const level = detectBloomLevel(text);
-    setObjectives(objectives.map(o => o.id === id ? { ...o, text, level } : o));
+    const questionType = detectQuestionType(text);
+    setObjectives(objectives.map(o => o.id === id ? { ...o, text, level, questionType } : o));
   };
 
   const setObjectiveLevel = (id: string, level: BloomLevel) => {
     setObjectives(objectives.map(o => o.id === id ? { ...o, level } : o));
+  };
+
+  const setObjectiveQuestionType = (id: string, questionType: QuestionType) => {
+    setObjectives(objectives.map(o => o.id === id ? { ...o, questionType } : o));
   };
 
   const deleteObjective = (id: string) => {
@@ -170,8 +179,13 @@ export default function App() {
         remember: 0, understand: 0, apply: 0, analyze: 0, evaluate: 0, create: 0
       };
 
+      const typeCounts: Record<QuestionType, number> = {
+        mcq: 0, 'true-false': 0, matching: 0, complete: 0, essay: 0
+      };
+
       topicObjectives.forEach(obj => {
         levelCounts[obj.level]++;
+        typeCounts[obj.questionType]++;
       });
 
       const totalObjInTopic = topicObjectives.length || 1;
@@ -189,6 +203,7 @@ export default function App() {
         topicTitle: topic.title,
         cells,
         levelCounts,
+        typeCounts,
         totalObjectives: topicObjectives.length
       };
     });
@@ -553,10 +568,30 @@ export default function App() {
                                   />
                                 </div>
 
-                                <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                                  <div className="flex items-center gap-2">
-                                    <Info size={14} className="text-slate-400" />
-                                    <span className="text-[10px] text-slate-400">سيقوم النظام بتصنيف مستوى بلوم تلقائياً بناءً على الفعل المستخدم.</span>
+                                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-50">
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <Info size={14} className="text-slate-400" />
+                                      <span className="text-[10px] text-slate-400">سيقوم النظام بتصنيف مستوى بلوم تلقائياً بناءً على الفعل المستخدم.</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-bold text-slate-500">نوع السؤال المقترح:</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {(Object.keys(QUESTION_TYPES) as QuestionType[]).map((type) => (
+                                          <button
+                                            key={type}
+                                            onClick={() => setObjectiveQuestionType(obj.id, type)}
+                                            className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${
+                                              obj.questionType === type 
+                                                ? QUESTION_TYPES[type].color + ' ring-2 ring-offset-1 ring-indigo-500' 
+                                                : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
+                                            }`}
+                                          >
+                                            {QUESTION_TYPES[type].name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
                                   </div>
                                   <BloomStepper 
                                     currentLevel={obj.level} 
@@ -756,6 +791,16 @@ export default function App() {
                             <span className="opacity-70">{Math.round(cell.percentage)}%</span>
                           </div>
                         ))}
+                      </div>
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="text-[9px] font-bold text-slate-400 mb-1 uppercase tracking-tighter">توزيع أنواع الأسئلة:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {(Object.entries(row.typeCounts) as [QuestionType, number][]).filter(([_, count]) => count > 0).map(([type, count]) => (
+                            <div key={type} className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${QUESTION_TYPES[type].color}`}>
+                              {QUESTION_TYPES[type].name}: {count}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))}

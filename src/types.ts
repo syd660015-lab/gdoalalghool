@@ -1,6 +1,22 @@
 
 export type BloomLevel = 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate' | 'create';
 
+export type QuestionType = 'mcq' | 'true-false' | 'matching' | 'complete' | 'essay';
+
+export interface QuestionTypeInfo {
+  id: QuestionType;
+  name: string;
+  color: string;
+}
+
+export const QUESTION_TYPES: Record<QuestionType, QuestionTypeInfo> = {
+  'mcq': { id: 'mcq', name: 'اختيار من متعدد', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  'true-false': { id: 'true-false', name: 'صح وخطأ', color: 'bg-green-50 text-green-700 border-green-200' },
+  'matching': { id: 'matching', name: 'مزاوجة', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'complete': { id: 'complete', name: 'أكمل', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  'essay': { id: 'essay', name: 'سؤال مقالي', color: 'bg-slate-50 text-slate-700 border-slate-200' }
+};
+
 export interface BloomLevelInfo {
   id: BloomLevel;
   name: string;
@@ -134,6 +150,29 @@ export function detectBloomLevel(objective: string): BloomLevel {
   return 'remember'; // Default
 }
 
+export function detectQuestionType(objective: string): QuestionType {
+  const plainText = objective.replace(/<[^>]*>/g, ' ').trim().toLowerCase();
+  
+  // Keywords for detection
+  const matchingKeywords = ['يربط', 'يطابق', 'يوصل', 'يزاوج', 'المزاوجة'];
+  const trueFalseKeywords = ['صح وخطأ', 'صواب وخطأ', 'يميز بين الخطأ والصواب', 'صحة أو خطأ'];
+  const completeKeywords = ['يعدد', 'يذكر', 'يسمي', 'أكمل', 'يملأ الفراغ', 'قائمة'];
+  const essayKeywords = ['يشرح', 'يلخص', 'ينقد', 'يصمم', 'يبتكر', 'يبرهن', 'يكتب', 'يؤلف', 'يقترح', 'يوضح', 'يقارن', 'يفسر'];
+  const mcqKeywords = ['يختار', 'يميز', 'يحدد', 'ينتقي', 'اختيار'];
+
+  for (const kw of matchingKeywords) if (plainText.includes(kw)) return 'matching';
+  for (const kw of trueFalseKeywords) if (plainText.includes(kw)) return 'true-false';
+  for (const kw of essayKeywords) if (plainText.includes(kw)) return 'essay';
+  for (const kw of completeKeywords) if (plainText.includes(kw)) return 'complete';
+  for (const kw of mcqKeywords) if (plainText.includes(kw)) return 'mcq';
+
+  // Fallback based on Bloom Level if text detection fails
+  const level = detectBloomLevel(objective);
+  if (level === 'evaluate' || level === 'create') return 'essay';
+  
+  return 'mcq'; // Default
+}
+
 export interface Topic {
   id: string;
   title: string;
@@ -145,6 +184,7 @@ export interface Objective {
   topicId: string;
   text: string;
   level: BloomLevel;
+  questionType: QuestionType;
 }
 
 export interface TOSCell {
