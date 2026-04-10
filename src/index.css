@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Tajawal", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  direction: rtl;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+}
+
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-slate-200 shadow-sm rounded-2xl;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.btn-primary {
+  @apply bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95;
+}
+
+input, select, textarea {
+  @apply bg-white border border-slate-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-200;
+}
+
+/* Quill Editor Customization */
+.objective-editor .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: flex-start;
+  background-color: #f8fafc;
+}
+
+.objective-editor .ql-snow .ql-stroke {
+  stroke: #64748b;
+}
+
+.objective-editor .ql-snow .ql-fill {
+  fill: #64748b;
+}
+
+.objective-editor .ql-snow.ql-toolbar button:hover .ql-stroke,
+.objective-editor .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+  stroke: #4f46e5;
+}
+
+.objective-editor .ql-container.ql-snow {
+  border: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.objective-editor .ql-editor {
+  padding: 12px 16px;
+  min-height: 80px;
+  text-align: right;
+  line-height: 1.6;
+}
+
+.objective-editor .ql-editor.ql-blank::before {
+  right: 16px;
+  left: auto;
+  font-style: normal;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.objective-editor .ql-tooltip {
+  left: 0 !important;
+  right: auto !important;
+}
